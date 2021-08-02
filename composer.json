@@ -1,0 +1,29 @@
+{
+    "name": "soonio/calendar",
+    "description": "一个中国农历相关的小工具",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "清流",
+            "email": "soonio@qq.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=7.4",
+        "soonio/utils": "^0.1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9",
+        "ext-json": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "soonio\\calendar\\": "src"
+        }
+    },
+    "scripts": {
+        "test": "phpunit -c phpunit.xml --colors=always"
+    }
+}

@@ -3,7 +3,7 @@
 ## 安装使用
 
   ```shell
-  composer require qingliu/calendar
+  composer require soonio/calendar
   ```
 
 ## 功能

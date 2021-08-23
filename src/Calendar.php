@@ -1,12 +1,12 @@
 <?php
 declare (strict_types=1);
 
-namespace soonio\calendar;
+namespace shiyin\calendar;
 
 /**
  * 基础历法的核心计算逻辑
  * Class Calendar
- * @package soonio\calendar
+ * @package shiyin\calendar
  */
 class Calendar
 {

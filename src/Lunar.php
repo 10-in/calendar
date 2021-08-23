@@ -1,19 +1,16 @@
 <?php
 declare (strict_types=1);
 
-namespace soonio\calendar;
+namespace shiyin\calendar;
 
-use soonio\utils\Configure;
 
 /**
  * 农历/阴历
  * Class Solar
- * @package soonio\calendar
+ * @package shiyin\calendar
  */
 class Lunar extends Time
 {
-    use Configure;
-
     public int $year;
     public int $month;
     public int $day;

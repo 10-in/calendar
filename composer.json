@@ -1,18 +1,17 @@
 {
-    "name": "soonio/calendar",
+    "name": "shiyin/calendar",
     "description": "一个中国农历相关的小工具",
     "type": "library",
     "license": "MIT",
     "authors": [
         {
-            "name": "清流",
-            "email": "soonio@qq.com"
+            "name": "实印科技",
+            "email": "developer@10in.com"
         }
     ],
     "minimum-stability": "stable",
     "require": {
-        "php": ">=7.4",
-        "soonio/utils": "^0.1.0"
+        "php": ">=7.4"
     },
     "require-dev": {
         "phpunit/phpunit": "^9",
@@ -20,7 +19,7 @@
     },
     "autoload": {
         "psr-4": {
-            "soonio\\calendar\\": "src"
+            "shiyin\\calendar\\": "src"
         }
     },
     "scripts": {

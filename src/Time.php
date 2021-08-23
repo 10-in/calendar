@@ -1,11 +1,11 @@
 <?php
 declare (strict_types=1);
 
-namespace soonio\calendar;
+namespace shiyin\calendar;
 
 /**
  * Class Time
- * @package soonio\calendar
+ * @package shiyin\calendar
  */
 abstract class Time
 {
@@ -23,4 +23,13 @@ abstract class Time
      * @return string
      */
     abstract function string(): string;
+
+    public static function configure($object, array $properties)
+    {
+        foreach ($properties as $name => $value) {
+            $object->$name = $value;
+        }
+        return $object;
+    }
+
 }

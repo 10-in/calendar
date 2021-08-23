@@ -1,12 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace soonio\calendar;
+namespace shiyin\calendar;
 
 /**
  * 天干地支
  * Class Chinese
- * @package soonio\calendar
+ * @package shiyin\calendar
  */
 class Chinese
 {

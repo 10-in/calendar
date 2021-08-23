@@ -2,10 +2,10 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
-use soonio\calendar\Calendar;
-use soonio\calendar\Chinese;
-use soonio\calendar\Lunar;
-use soonio\calendar\Solar;
+use shiyin\calendar\Calendar;
+use shiyin\calendar\Chinese;
+use shiyin\calendar\Lunar;
+use shiyin\calendar\Solar;
 
 class DemoTest extends TestCase
 {

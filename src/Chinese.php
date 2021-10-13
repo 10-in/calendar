@@ -232,7 +232,7 @@ class Chinese
                 $dayStr = self::DayPreference[3] . self::Number[10];
                 break;
             default:
-                $k = intval(floor($day / 10));
+                $k = (int)floor($day / 10);
                 $m = $day % 10;
                 $dayStr = self::DayPreference[$k] . self::Number[$m];
         }

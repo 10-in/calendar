@@ -177,29 +177,18 @@ class Calendar
     /**
      * 获取指定年的春分开始作Perturbaton调整后的24节气,可以多取2个
      * @param int $year
-     * @param int $start 0-25
-     * @param int $end 0-25
+     * @param int $start 0~25 索引
+     * @param int $end 0~25 索引
      * @return array
      */
     public static function GetAdjustedJQ(int $year, int $start, int $end): array
     {
-        if ($start < 0 || $start > 25) {
-            return [];
-        }
-        if ($end < 0 || $end > 25) {
-            return [];
-        }
-
         $jq = [];
+        $Jd4JQ = self::MeanJQJD($year); // 获取该年春分开始的24节气时间点
+        foreach ($Jd4JQ as $k => $jd) {
+            if ($k < $start) continue;
+            if ($k > $end) continue;
 
-        $jqjd = self::MeanJQJD($year); // 获取该年春分开始的24节气时间点
-        foreach ($jqjd as $k => $jd) {
-            if ($k < $start) {
-                continue;
-            }
-            if ($k > $end) {
-                continue;
-            }
             $ptb = self::Perturbation($jd); // 取得受perturbation影响所需微调
             $dt = self::DeltaT($year, intval(floor(($k + 1) / 2) + 3)); // 修正dynamical time to Universal time
             $jq[$k] = $jd + $ptb - $dt / 60 / 24; // 加上摄动调整值ptb,减去对应的Delta T值(分钟转换为日)
@@ -215,56 +204,42 @@ class Calendar
      */
     public static function GetPureJQSinceSpring(int $yy): array
     {
-        $jdpjq = [];
-
+        $jd4jq = [];
         $dj = self::GetAdjustedJQ($yy - 1, 19, 23); // 求出含指定年立春开始之3个节气JD值,以前一年的年值代入
         foreach ($dj as $k => $v) {
-            if ($k < 19) {
-                continue;
-            }
-            if ($k > 23) {
-                continue;
-            }
-            if ($k % 2 == 0) {
-                continue;
-            }
-            $jdpjq[] = $v; // 19小寒;20大寒;21立春;22雨水;23惊蛰
+            if ($k < 19 || 23 < $k || $k % 2 == 0) continue;
+            $jd4jq[] = $v; // 19小寒;20大寒;21立春;22雨水;23惊蛰
         }
 
         $dj = self::GetAdjustedJQ($yy, 0, 25); // 求出指定年节气之JD值,从春分开始,到大寒,多取两个确保覆盖一个公历年,也方便计算起运数
         foreach ($dj as $k => $v) {
-            if ($k % 2 == 0) {
-                continue;
-            }
-            $jdpjq[] = $v;
+            if ($k % 2 == 0) continue;
+            $jd4jq[] = $v;
         }
 
-        return $jdpjq;
+        return $jd4jq;
     }
 
     /**
-     * 求出自冬至点为起点的连续15个中气
+     * 求出自冬至点为起点的连续15个中气(zq)
      * @param int $year
      * @return array jq[(2*$k+18)%24]
      */
     public static function GetZQSinceWinterSolstice(int $year): array
     {
-        $jdzq = [];
+        $jd4zq = [];
 
         $dj = self::GetAdjustedJQ($year - 1, 18, 23); // 求出指定年冬至开始之节气JD值,以前一年的值代入
-        $jdzq[0] = $dj[18]; //冬至
-        $jdzq[1] = $dj[20]; //大寒
-        $jdzq[2] = $dj[22]; //雨水
+        $jd4zq[0] = $dj[18]; //冬至
+        $jd4zq[1] = $dj[20]; //大寒
+        $jd4zq[2] = $dj[22]; //雨水
 
         $dj = self::GetAdjustedJQ($year, 0, 23); // 求出指定年节气之JD值
         foreach ($dj as $k => $v) {
-            if ($k % 2 != 0) {
-                continue;
-            }
-            $jdzq[] = $v;
+            if ($k % 2 != 0) continue;
+            $jd4zq[] = $v;
         }
-
-        return $jdzq;
+        return $jd4zq;
     }
 
     /**
@@ -285,7 +260,7 @@ class Calendar
         // Sun's mean anomaly(地球绕太阳运行均值近点角)(从太阳观察)
         $m = 2.5534 + 29.10535669 * $k - 0.0000218 * $t2 - 0.00000011 * $t3;
         // Moon's mean anomaly(月球绕地球运行均值近点角)(从地球观察)
-        $mprime = 201.5643 + 385.81693528 * $k + 0.0107438 * $t2 + 0.00001239 * $t3 - 0.000000058 * $t4;
+        $mPrime = 201.5643 + 385.81693528 * $k + 0.0107438 * $t2 + 0.00001239 * $t3 - 0.000000058 * $t4;
         // Moon's argument of latitude(月球的纬度参数)
         $f = 160.7108 + 390.67050274 * $k - 0.0016341 * $t2 - 0.00000227 * $t3 + 0.000000011 * $t4;
         // Longitude of the ascending node of the lunar orbit(月球绕日运行轨道升交点之经度)
@@ -293,46 +268,47 @@ class Calendar
         // 乘式因子
         $es = 1 - 0.002516 * $t - 0.0000074 * $t2;
         // 因perturbation造成的偏移：
-        $apt1 = -0.4072 * sin((M_PI / 180) * $mprime);
-        $apt1 += 0.17241 * $es * sin((M_PI / 180) * $m);
-        $apt1 += 0.01608 * sin((M_PI / 180) * 2 * $mprime);
-        $apt1 += 0.01039 * sin((M_PI / 180) * 2 * $f);
-        $apt1 += 0.00739 * $es * sin((M_PI / 180) * ($mprime - $m));
-        $apt1 -= 0.00514 * $es * sin((M_PI / 180) * ($mprime + $m));
-        $apt1 += 0.00208 * $es * $es * sin((M_PI / 180) * (2 * $m));
-        $apt1 -= 0.00111 * sin((M_PI / 180) * ($mprime - 2 * $f));
-        $apt1 -= 0.00057 * sin((M_PI / 180) * ($mprime + 2 * $f));
-        $apt1 += 0.00056 * $es * sin((M_PI / 180) * (2 * $mprime + $m));
-        $apt1 -= 0.00042 * sin((M_PI / 180) * 3 * $mprime);
-        $apt1 += 0.00042 * $es * sin((M_PI / 180) * ($m + 2 * $f));
-        $apt1 += 0.00038 * $es * sin((M_PI / 180) * ($m - 2 * $f));
-        $apt1 -= 0.00024 * $es * sin((M_PI / 180) * (2 * $mprime - $m));
-        $apt1 -= 0.00017 * sin((M_PI / 180) * $omega);
-        $apt1 -= 0.00007 * sin((M_PI / 180) * ($mprime + 2 * $m));
-        $apt1 += 0.00004 * sin((M_PI / 180) * (2 * $mprime - 2 * $f));
-        $apt1 += 0.00004 * sin((M_PI / 180) * (3 * $m));
-        $apt1 += 0.00003 * sin((M_PI / 180) * ($mprime + $m - 2 * $f));
-        $apt1 += 0.00003 * sin((M_PI / 180) * (2 * $mprime + 2 * $f));
-        $apt1 -= 0.00003 * sin((M_PI / 180) * ($mprime + $m + 2 * $f));
-        $apt1 += 0.00003 * sin((M_PI / 180) * ($mprime - $m + 2 * $f));
-        $apt1 -= 0.00002 * sin((M_PI / 180) * ($mprime - $m - 2 * $f));
-        $apt1 -= 0.00002 * sin((M_PI / 180) * (3 * $mprime + $m));
-        $apt1 += 0.00002 * sin((M_PI / 180) * (4 * $mprime));
+        $slice = M_PI / 180;
+        $apt1 = -0.4072 * sin($slice * $mPrime);
+        $apt1 += 0.17241 * $es * sin($slice * $m);
+        $apt1 += 0.01608 * sin($slice * 2 * $mPrime);
+        $apt1 += 0.01039 * sin($slice * 2 * $f);
+        $apt1 += 0.00739 * $es * sin($slice * ($mPrime - $m));
+        $apt1 -= 0.00514 * $es * sin($slice * ($mPrime + $m));
+        $apt1 += 0.00208 * $es * $es * sin($slice * (2 * $m));
+        $apt1 -= 0.00111 * sin($slice * ($mPrime - 2 * $f));
+        $apt1 -= 0.00057 * sin($slice * ($mPrime + 2 * $f));
+        $apt1 += 0.00056 * $es * sin($slice * (2 * $mPrime + $m));
+        $apt1 -= 0.00042 * sin($slice * 3 * $mPrime);
+        $apt1 += 0.00042 * $es * sin($slice * ($m + 2 * $f));
+        $apt1 += 0.00038 * $es * sin($slice * ($m - 2 * $f));
+        $apt1 -= 0.00024 * $es * sin($slice * (2 * $mPrime - $m));
+        $apt1 -= 0.00017 * sin($slice * $omega);
+        $apt1 -= 0.00007 * sin($slice * ($mPrime + 2 * $m));
+        $apt1 += 0.00004 * sin($slice * (2 * $mPrime - 2 * $f));
+        $apt1 += 0.00004 * sin($slice * (3 * $m));
+        $apt1 += 0.00003 * sin($slice * ($mPrime + $m - 2 * $f));
+        $apt1 += 0.00003 * sin($slice * (2 * $mPrime + 2 * $f));
+        $apt1 -= 0.00003 * sin($slice * ($mPrime + $m + 2 * $f));
+        $apt1 += 0.00003 * sin($slice * ($mPrime - $m + 2 * $f));
+        $apt1 -= 0.00002 * sin($slice * ($mPrime - $m - 2 * $f));
+        $apt1 -= 0.00002 * sin($slice * (3 * $mPrime + $m));
+        $apt1 += 0.00002 * sin($slice * (4 * $mPrime));
 
-        $apt2 = 0.000325 * sin((M_PI / 180) * (299.77 + 0.107408 * $k - 0.009173 * $t2));
-        $apt2 += 0.000165 * sin((M_PI / 180) * (251.88 + 0.016321 * $k));
-        $apt2 += 0.000164 * sin((M_PI / 180) * (251.83 + 26.651886 * $k));
-        $apt2 += 0.000126 * sin((M_PI / 180) * (349.42 + 36.412478 * $k));
-        $apt2 += 0.00011 * sin((M_PI / 180) * (84.66 + 18.206239 * $k));
-        $apt2 += 0.000062 * sin((M_PI / 180) * (141.74 + 53.303771 * $k));
-        $apt2 += 0.00006 * sin((M_PI / 180) * (207.14 + 2.453732 * $k));
-        $apt2 += 0.000056 * sin((M_PI / 180) * (154.84 + 7.30686 * $k));
-        $apt2 += 0.000047 * sin((M_PI / 180) * (34.52 + 27.261239 * $k));
-        $apt2 += 0.000042 * sin((M_PI / 180) * (207.19 + 0.121824 * $k));
-        $apt2 += 0.00004 * sin((M_PI / 180) * (291.34 + 1.844379 * $k));
-        $apt2 += 0.000037 * sin((M_PI / 180) * (161.72 + 24.198154 * $k));
-        $apt2 += 0.000035 * sin((M_PI / 180) * (239.56 + 25.513099 * $k));
-        $apt2 += 0.000023 * sin((M_PI / 180) * (331.55 + 3.592518 * $k));
+        $apt2 = 0.000325 * sin($slice * (299.77 + 0.107408 * $k - 0.009173 * $t2));
+        $apt2 += 0.000165 * sin($slice * (251.88 + 0.016321 * $k));
+        $apt2 += 0.000164 * sin($slice * (251.83 + 26.651886 * $k));
+        $apt2 += 0.000126 * sin($slice * (349.42 + 36.412478 * $k));
+        $apt2 += 0.00011 * sin($slice * (84.66 + 18.206239 * $k));
+        $apt2 += 0.000062 * sin($slice * (141.74 + 53.303771 * $k));
+        $apt2 += 0.00006 * sin($slice * (207.14 + 2.453732 * $k));
+        $apt2 += 0.000056 * sin($slice * (154.84 + 7.30686 * $k));
+        $apt2 += 0.000047 * sin($slice * (34.52 + 27.261239 * $k));
+        $apt2 += 0.000042 * sin($slice * (207.19 + 0.121824 * $k));
+        $apt2 += 0.00004 * sin($slice * (291.34 + 1.844379 * $k));
+        $apt2 += 0.000037 * sin($slice * (161.72 + 24.198154 * $k));
+        $apt2 += 0.000035 * sin($slice * (239.56 + 25.513099 * $k));
+        $apt2 += 0.000023 * sin($slice * (331.55 + 3.592518 * $k));
         return $pt + $apt1 + $apt2;
     }
 
@@ -402,14 +378,14 @@ class Calendar
     public static function GetZQAndSMandLunarMonthCode(int $year): array
     {
         $mc = [];
-        $jdzq = self::GetZQSinceWinterSolstice($year); // 取得以前一年冬至为起点之连续15个中气
-        $jdnm = self::GetSMSinceWinterSolstice($year, $jdzq[0]); // 求出以含冬至中气为阴历11月(冬月)开始的连续16个朔望月的新月點
+        $jd4zq = self::GetZQSinceWinterSolstice($year); // 取得以前一年冬至为起点之连续15个中气
+        $jd4nm = self::GetSMSinceWinterSolstice($year, $jd4zq[0]); // 求出以含冬至中气为阴历11月(冬月)开始的连续16个朔望月的新月點
         $yz = 0; // 设定flag,0表示未遇到闰月,1表示已遇到闰月
-        if (floor($jdzq[12] + 0.5) >= floor($jdnm[13] + 0.5)) { // 若第13个中气jdzq(12)大于或等于第14个新月jdnm(13)
+        if (floor($jd4zq[12] + 0.5) >= floor($jd4nm[13] + 0.5)) { // 若第13个中气jdzq(12)大于或等于第14个新月jdnm(13)
             for ($i = 1; $i <= 14; $i++) { // 表示此两个冬至之间的11个中气要放到12个朔望月中,
                 // 至少有一个朔望月不含中气,第一个不含中气的月即为闰月
                 // 若阴历腊月起始日大于冬至中气日,且阴历正月起始日小于或等于大寒中气日,则此月为闰月,其余同理
-                if (($jdnm[$i] + 0.5) > floor($jdzq[$i - 1 - $yz] + 0.5) && floor($jdnm[$i + 1] + 0.5) <= floor($jdzq[$i - $yz] + 0.5)) {
+                if (($jd4nm[$i] + 0.5) > floor($jd4zq[$i - 1 - $yz] + 0.5) && floor($jd4nm[$i + 1] + 0.5) <= floor($jd4zq[$i - $yz] + 0.5)) {
                     $mc[$i] = $i - 0.5;
                     $yz = 1; //标示遇到闰月
                 } else {
@@ -422,7 +398,7 @@ class Calendar
             }
             for ($i = 13; $i <= 14; $i++) { //处理次一置月年的11月与12月,亦有可能含闰月
                 // 若次一阴历腊月起始日大于附近的冬至中气日,且阴历正月起始日小于或等于大寒中气日,则此月为腊月,次一正月同理.
-                if (($jdnm[$i] + 0.5) > floor($jdzq[$i - 1 - $yz] + 0.5) && floor($jdnm[$i + 1] + 0.5) <= floor($jdzq[$i - $yz] + 0.5)) {
+                if (($jd4nm[$i] + 0.5) > floor($jd4zq[$i - 1 - $yz] + 0.5) && floor($jd4nm[$i + 1] + 0.5) <= floor($jd4zq[$i - $yz] + 0.5)) {
                     $mc[$i] = $i - 0.5;
                     $yz = 1; // 标示遇到闰月
                 } else {
@@ -430,20 +406,20 @@ class Calendar
                 }
             }
         }
-        return [$jdnm, $mc];
+        return [$jd4nm, $mc];
     }
 
     /**
      * 求算以含冬至中气为阴历11月开始的连续16个朔望月
      * @param int $year 年份
-     * @param float $jdws 冬至的儒略日历时间
+     * @param float $jd4ws 冬至的儒略日历时间
      * @return array
      */
-    public static function GetSMSinceWinterSolstice(int $year, float $jdws): array
+    public static function GetSMSinceWinterSolstice(int $year, float $jd4ws): array
     {
         $tjd = [];
-        $jd = self::Solar2Julian($year - 1, 11, 1, 0, 0, 0); //求年初前兩个月附近的新月點(即前一年的11月初)
-        list($kn, ) = self::MeanNewMoon($jd); //求得自2000年1月起第kn个平均朔望日及其JD值
+        $jd = self::Solar2Julian($year - 1, 11, 1); //求年初前兩个月附近的新月點(即前一年的11月初)
+        list($kn,) = self::MeanNewMoon($jd); //求得自2000年1月起第kn个平均朔望日及其JD值
         for ($i = 0; $i <= 19; $i++) { //求出連續20个朔望月
             $k = $kn + $i;
             $tjd[$i] = self::TrueNewMoon($k) + 1 / 3; //以k值代入求瞬时朔望日,因中國比格林威治先行8小时,加1/3天
@@ -451,7 +427,7 @@ class Calendar
             $tjd[$i] = $tjd[$i] - self::DeltaT($year, $i - 1) / 1440; //1为1月,0为前一年12月,-1为前一年11月(当i=0时,i-1=-1,代表前一年11月)
         }
         for ($j = 0; $j <= 18; $j++) {
-            if (floor($tjd[$j] + 0.5) > floor($jdws + 0.5)) {
+            if (floor($tjd[$j] + 0.5) > floor($jd4ws + 0.5)) {
                 break;
             } // 已超過冬至中氣(比較日期法)
         }
@@ -471,7 +447,7 @@ class Calendar
      * @param int $hour [0-23]
      * @param int $minute [0-59]
      * @param int $second [0-59]
-     * @return boolean
+     * @return float
      */
     public static function Solar2Julian(int $year, int $month, int $day, int $hour = 0, int $minute = 0, int $second = 0)
     {
@@ -516,26 +492,18 @@ class Calendar
      */
     public static function validDate(int $yy, int $mm, int $dd): bool
     {
-        if ($yy < -1000 || $yy > 3000) { //适用于西元-1000年至西元3000年,超出此范围误差较大
-            return false;
-        }
+        if (
+            ($yy < -1000 || $yy > 3000) //适用于西元-1000年至西元3000年,超出此范围误差较大
+            || ($mm < 1 || $mm > 12)
+            || ($yy == 1582 && $mm == 10 && $dd >= 5 && $dd < 15) //这段日期不存在.所以1582年10月只有20天
+        ) return false;
 
-        if ($mm < 1 || $mm > 12) { //月份超出范围
-            return false;
-        }
-
-        if ($yy == 1582 && $mm == 10 && $dd >= 5 && $dd < 15) { //这段日期不存在.所以1582年10月只有20天
-            return false;
-        }
-
-        $ndf1 = -($yy % 4 == 0); //可被四整除
-        $ndf2 = (($yy % 400 == 0) - ($yy % 100 == 0)) && ($yy > 1582);
+        $ndf1 = $yy % 4 == 0 ? -1 : 0; //可被四整除
+        $ndf2 = (($yy % 400 == 0 ? 1 : 0) - ($yy % 100 == 0 ? 1 : 0)) == 1 && $yy > 1582;
         $ndf = $ndf1 + $ndf2;
-        $dom = 30 + ((abs($mm - 7.5) + 0.5) % 2) - intval($mm == 2) * (2 + $ndf);
-        if ($dd <= 0 || $dd > $dom) {
-            return false;
-        }
-        return true;
+        $dom = 30 + ((abs($mm - 7.5) + 0.5) % 2) - ($mm == 2 ? 1 : 0) * (2 + $ndf);
+
+        return 0 < $dd && $dd <= $dom;
     }
 
     /**
@@ -548,20 +516,14 @@ class Calendar
      */
     public static function Lunar2Solar(int $year, int $month, int $day, bool $isLeap): ?array
     {
-        if ($year < -7000 || $year > 7000) { //超出计算能力
-            return null;
-        }
-        if ($year < -1000 || $year > 3000) { //适用于西元-1000年至西元3000年,超出此范围误差较大
-            return null;
-        }
-        if ($month < 1 || $month > 12) { //输入月份必須在1-12月之內
-            return null;
-        }
-        if ($day < 1 || $day > 30) { //输入日期必須在1-30日之內
-            return null;
-        }
+        if (
+            $year < -7000  //超出计算能力 有效的计算范围在公元前后七千年
+            || ($year < -1000 || $year > 3000)  //适用于西元-1000年至西元3000年,超出此范围误差较大
+            || ($month < 1 || $month > 12) //输入月份必須在1-12月之內
+            || ($day < 1 || $day > 30) //输入日期必須在1-30日之內
+        ) return null;
 
-        list($jdnm, $mc) = self::GetZQAndSMandLunarMonthCode($year);
+        list($jd4nm, $mc) = self::GetZQAndSMandLunarMonthCode($year);
 
         $leap = 0; //若闰月flag为0代表无闰月
         for ($j = 1; $j <= 14; $j++) { //确认指定年前一年11月开始各月是否闰月
@@ -575,43 +537,39 @@ class Calendar
 
         $NoFd = [];
         for ($i = 0; $i <= 14; $i++) { //求算阴历各月之大小,大月30天,小月29天
-            $NoFd[$i] = floor($jdnm[$i + 1] + 0.5) - floor($jdnm[$i] + 0.5); //每月天数,加0.5是因JD以正午起算
+            $NoFd[$i] = floor($jd4nm[$i + 1] + 0.5) - floor($jd4nm[$i] + 0.5); //每月天数,加0.5是因JD以正午起算
         }
-
-        $jd = 0; //儒略日历时间
-        $er = 0; //若输入值有错误,er值将被设定为非0
 
         if ($isLeap) { //若是闰月
             if ($leap < 3) { //而flag非闰月或非本年闰月,则表示此年不含闰月.leap=0代表无闰月,=1代表闰月为前一年的11月,=2代表闰月为前一年的12月
-                $er = 1; //此年非闰年
+                return null; //此年非闰年
             } else { //若本年內有闰月
                 if ($leap != $month) { //但不为输入的月份
-                    $er = 2; //则此输入的月份非闰月,此月非闰月
+                    return null; //则此输入的月份非闰月,此月非闰月
                 } else { //若输入的月份即为闰月
                     if ($day <= $NoFd[$month]) { //若输入的日期不大于当月的天数
-                        $jd = $jdnm[$month] + $day - 1; //则将当月之前的JD值加上日期之前的天数
+                        $jd = $jd4nm[$month] + $day - 1; //则将当月之前的JD值加上日期之前的天数
                     } else { //日期超出范围
-                        $er = 3;
+                        return null;
                     }
                 }
             }
         } else { //若沒有勾选闰月则
             if ($leap == 0) { //若flag非闰月,则表示此年不含闰月(包括前一年的11月起之月份)
                 if ($day <= $NoFd[$month - 1]) { //若输入的日期不大于当月的天数
-                    $jd = $jdnm[$month - 1] + $day - 1; //则将当月之前的JD值加上日期之前的天数
+                    $jd = $jd4nm[$month - 1] + $day - 1; //则将当月之前的JD值加上日期之前的天数
                 } else { //日期超出范围
-                    $er = 4;
+                    return null;
                 }
             } else { //若flag为本年有闰月(包括前一年的11月起之月份) 公式nofd(mx - (mx > leap) - 1)的用意为:若指定月大于闰月,则索引用mx,否则索引用mx-1
                 if ($day <= $NoFd[$month + ($month > $leap) - 1]) { //若输入的日期不大于当月的天数
-                    $jd = $jdnm[$month + ($month > $leap) - 1] + $day - 1; //则将当月之前的JD值加上日期之前的天数
+                    $jd = $jd4nm[$month + ($month > $leap) - 1] + $day - 1; //则将当月之前的JD值加上日期之前的天数
                 } else { //日期超出范围
-                    $er = 4;
+                    return null;
                 }
             }
         }
-
-        return $er > 0 ? null : array_slice(self::Julian2Solar($jd), 0, 3);
+        return array_slice(self::Julian2Solar($jd), 0, 3);
     }
 
     /**
@@ -632,7 +590,7 @@ class Calendar
 
         list($JdNm, $mc) = self::GetZQAndSMandLunarMonthCode($year);
 
-        $jd = self::Solar2Julian($year, $month, $day, 12, 0, 0); //求出指定年月日之JD值
+        $jd = self::Solar2Julian($year, $month, $day, 12); //求出指定年月日之JD值
         if (floor($jd) < floor($JdNm[0] + 0.5)) {
             $prev = 1;
             list($JdNm, $mc) = self::GetZQAndSMandLunarMonthCode($year - 1);
@@ -653,9 +611,8 @@ class Calendar
             $isLeap = 1;
         }
         $month = floor($mc[$mi] + 10) % 12 + 1; //月
+        $day = floor($jd) - floor($JdNm[$mi] + 0.5) + 1; //日,此处加1是因为每月初一从1开始而非从0开始
 
-        $day = intval(floor($jd) - floor($JdNm[$mi] + 0.5) + 1); //日,此处加1是因为每月初一从1开始而非从0开始
-
-        return [$year, $month, $day, $isLeap];
+        return [$year, $month, (int)$day, $isLeap];
     }
 }

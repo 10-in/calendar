@@ -46,7 +46,7 @@ class Lunar extends Time
      */
     public function monthDays(): int
     {
-        list($jdnm, $mc) = Calendar::GetZQAndSMandLunarMonthCode($this->year);
+        list($jd4nm, $mc) = Calendar::GetZQAndSMandLunarMonthCode($this->year);
         $leap = 0;
         for ($j = 1; $j <= 14; $j++) {
             if ($mc[$j] - floor($mc[$j]) > 0) {
@@ -57,7 +57,7 @@ class Lunar extends Time
         $month = $this->month + 2;
         $nofd = [];
         for ($i = 0; $i <= 14; $i++) {
-            $nofd[$i] = floor($jdnm[$i + 1] + 0.5) - floor($jdnm[$i] + 0.5);
+            $nofd[$i] = floor($jd4nm[$i + 1] + 0.5) - floor($jd4nm[$i] + 0.5);
         }
 
         $days = 0;
